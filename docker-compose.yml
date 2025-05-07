@@ -1,17 +1,24 @@
+version: '3.8'
+
 services:
   postgres:
     container_name: postgres
-    image: postgres
+    image: postgres:latest
     environment:
       POSTGRES_USER: mtmanh
       POSTGRES_PASSWORD: vodanhtu1
       PGDATA: /data/postgres
     volumes:
-      - postgres:/data/postgres
+      - postgres-data:/data/postgres
     ports:
       - "5432:5432"
     networks:
-      - postgres
+      - instasora-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtmanh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   pgadmin:
@@ -22,18 +29,79 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     volumes:
-      - pgadmin:/var/lib/pgadmin
-
+      - pgadmin-data:/var/lib/pgadmin
     ports:
       - "5050:80"
     networks:
+      - instasora-network
+    depends_on:
       - postgres
     restart: unless-stopped
 
+  eureka-server:
+    container_name: eureka-server
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    networks:
+      - instasora-network
+    restart: unless-stopped
+
+  user-service:
+    container_name: user-service
+    build:
+      context: ./user
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/user
+      - SPRING_DATASOURCE_USERNAME=mtmanh
+      - SPRING_DATASOURCE_PASSWORD=vodanhtu1
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka-server:8761/eureka
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    ports:
+      - "8080:8080"
+    networks:
+      - instasora-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
+  content-service:
+    container_name: content-service
+    build:
+      context: ./Content
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/content
+      - SPRING_DATASOURCE_USERNAME=mtmanh
+      - SPRING_DATASOURCE_PASSWORD=vodanhtu1
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka-server:8761/eureka
+    ports:
+      - "8081:8081"
+    networks:
+      - instasora-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    restart: unless-stopped
+
 networks:
-  postgres:
+  instasora-network:
     driver: bridge
 
 volumes:
-  postgres:
-  pgadmin:
+  postgres-data:
+  pgadmin-data:

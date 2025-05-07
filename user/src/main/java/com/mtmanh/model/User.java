@@ -1,4 +1,4 @@
-package com.mtmanh;
+package com.mtmanh.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -20,6 +21,12 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 50)
+    private String firstName;
+
+    @Column(nullable = false, length = 50)
+    private String lastName;
 
     @Column(unique = true, nullable = false, length = 30)
     private String username;
@@ -47,6 +54,24 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-//    @Enumerated(EnumType.STRING)
-//    private UserRole role = UserRole.USER;
-}
+    @Enumerated(EnumType.STRING)
+    private UserRole role = UserRole.USER;
+    
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+    
+    @Column(name = "reset_password_token_expiry")
+    private LocalDateTime resetPasswordTokenExpiry;
+    
+    @Column(name = "enabled")
+    private boolean enabled = false;
+    
+    @Column(name = "verification_token")
+    private String verificationToken;
+    
+    @Column(name = "oauth2_provider")
+    private String oauth2Provider;
+    
+    @Column(name = "oauth2_id")
+    private String oauth2Id;
+} 
